@@ -1,16 +1,11 @@
-----------------------------------
- --Project 2
+
  ---------------------------------						
  --Name: Nupur Kulkarni
  --SUID: 631402325
  ---------------------------------
- --******************
- --Design Changes
- --******************
- --I think I failed to understand the design problem so my design was done without proper thought process.
- --When I went through the problem again and mapped it with solution given by Professor I found my design not properly normalized.
- --My design is not repairable so I followed Instructor Solution of design problem for Project 2. 
- --
+
+
+
  --***********************
  --Creation of New Schema
  --***********************
@@ -29,7 +24,7 @@ CREATE TABLE pr2.Addresses
 	Street2       VARCHAR(20),
 	City          VARCHAR(20)    NOT NULL,
 	State         VARCHAR(20)    NOT NULL,
-	ZIP           VARCHAR(10)    NOT NULL,
+	ZIP           VARCHAR(10)    NOT NULL
 );
 
 CREATE TABLE pr2.AreaOfStudy
@@ -50,7 +45,7 @@ CREATE TABLE pr2.Benefits
 CREATE TABLE pr2.BenefitSelection
 (
 	BenefitSelectionID INTEGER      PRIMARY KEY     IDENTITY(1,1),
-	BenefitSelection   VARCHAR(20)  NOT NULL,
+	BenefitSelection   VARCHAR(20)  NOT NULL
 );
 
 CREATE TABLE pr2.Buildings
@@ -683,7 +678,7 @@ END;
 
 
 --*******************
---Procedures (3)
+--Procedures (4)
 --*******************
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -884,6 +879,69 @@ END
 --EXEC pr2.StudentsReport @CourseCode = 'CS', @CourseNumber = 612 , @FacultyID =  9
 --Success 
 --EXEC pr2.StudentsReport @CourseCode = 'CS', @CourseNumber = 612 , @FacultyID =  7
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--5.Procedure 4
+--The procedure pr2.EnrollStudent is used to enroll a student into a course 
+--It first checks if the course is available by checking the Course Schedule table
+--The second check is for if the student's records exist in the database
+--The third check is for if the student is already enrolled for the same course
+--The fourth check is for the student's status, if he's eligible to enroll
+--After all the checks are passed, the student is enrolled by inserting the details in the pr2.EnrolledStudents table
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE PROCEDURE pr2.EnrollStudent(@courseCode AS VARCHAR(20), @courseNumber AS INT, @semester AS INT, @studentId AS INT)
+AS
+BEGIN 
+DECLARE @semesterName AS VARCHAR(50)
+DECLARE @studentStatus AS INT
+ IF NOT EXISTS(SELECT * FROM pr2.CourseSchedule WHERE CourseCode = @courseCode AND CourseNumber = @courseNumber AND Semester = @semester)
+	BEGIN
+	 SET @semesterName=(SELECT Semester FROM pr2.SemesterInfo WHERE SemesterId=@semester)
+	 PRINT 'Error: This course is not available for the'+' '+@semesterName+' '+'semester'
+	 RETURN
+	END
+ELSE IF NOT EXISTS(SELECT * FROM pr2.StudentInfo WHERE StudentId=@studentId)
+	BEGIN
+	  PRINT 'Error: The student details are incorrect'
+	  RETURN
+	END
+ELSE IF EXISTS(SELECT * FROM pr2.CourseEnrollment WHERE StudentId=@studentId AND CourseId IN (SELECT CourseScheduleId FROM pr2.CourseSchedule WHERE CourseCode = @courseCode AND CourseNumber = @courseNumber AND Semester = @semester))
+	BEGIN
+	  PRINT 'Error: Student is already enrolled for this course'
+	  RETURN
+	END
+ELSE 
+	BEGIN
+	  SET @studentStatus=(SELECT StudentStatus FROM pr2.StudentStatus WHERE StudentStatusID=@studentId)
+	  IF @studentStatus = 5 OR @studentStatus = 6
+		BEGIN
+		PRINT 'Error: Student is ineligible to be enrolled for this course'
+		END
+	  ELSE 
+		 BEGIN
+			DECLARE @CourseId AS INT
+			SET @CourseId=(SELECT CourseScheduleId FROM pr2.CourseSchedule WHERE CourseCode = @courseCode AND CourseNumber = @courseNumber AND Semester = @semester)
+			INSERT INTO pr2.CourseEnrollment(CourseId,StudentId,StatusID,GradeID) 
+			VALUES(@CourseId, @studentId, 2, NULL);
+			PRINT 'Student has successfully been enrolled in the requested course'
+		 END
+	  RETURN
+	END
+END;
+
+--Error Message 1
+--EXEC pr2.EnrollStudent 'MA', 654, 1, 3;
+--Error Message 2
+--EXEC pr2.EnrollStudent 'MA', 654, 3, 11;
+--Error Message 3
+--EXEC pr2.EnrollStudent 'MA', 654, 3, 2;
+--Error Message 4
+--EXEC pr2.EnrollStudent 'MA', 654, 3, 1;
+--Success Message(already executed so it will be error message 3 now)
+--EXEC pr2.EnrollStudent 'MA', 654, 3, 3;
+
 
 
 
